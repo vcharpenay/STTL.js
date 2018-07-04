@@ -1,0 +1,16 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ex:   <http://example.org/ns/> .
+
+foaf:Person rdfs:subClassOf [
+	a owl:Restriction ;
+	owl:onProperty foaf:knows ;
+	owl:allValuesFrom foaf:Person
+].
+
+ex:Alice a foaf:Person ;
+         foaf:knows ex:Bob .
+
+ex:Eve a foaf:Person ;
+       foaf:knows ex:Mallory .

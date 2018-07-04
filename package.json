@@ -1,0 +1,26 @@
+{
+  "name": "sttl",
+  "version": "0.0.1",
+  "description": "A JavaScript Implementation of the SPARQL Template Transformation Language (STTL)",
+  "author": "Victor Charpenay <victor.charpenay@siemens.com>",
+  "keywords": [
+    "sparql",
+    "rdf",
+    "sttl"
+  ],
+  "license": "MIT",
+  "main": "./src/sttl.js",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "jison": "0.4.18",
+    "sparqljs": "2.0.x",
+    "hylar": "1.8.4",
+    "node-fetch": "2.1.2",
+    "mocha": "3.0.x"
+  }
+}

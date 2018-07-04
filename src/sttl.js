@@ -1,0 +1,186 @@
+const generator = new require('sparqljs').Generator();
+const fetch = require('node-fetch');
+
+// SPARQL configuration
+let endpoint = 'http://localhost';
+let fn = null;
+
+function sparql(q) {
+	if (fn) {
+		return fn(q);
+	} else if (endpoint) {
+		return fetch(endpoint, {
+			body: q,
+			method: 'POST',
+			headers: {
+			'content-type': 'application/sparql-query',
+			'accept': 'application/sparql-results+json'
+			}
+		}).then(resp => resp.json());
+	} else {
+		return Promise.reject(new Error('No suitable SPARQL configuration found'));
+	}
+}
+
+// collection of templates tested by applyTemplates()
+let directory = [];
+
+// merged prefixes from all templates
+let prefixes = {};
+
+function turtle(term) {
+	switch (term.type) {
+		case 'uri':
+			for (p in prefixes) {
+				let uri = term.value;
+				let ns = prefixes[p];
+				if (uri.startsWith(ns)) {
+					let name = uri.substring(ns.length);
+					return p + ':' + name;
+				}
+			}
+			return '<' + term.value + '>';
+		case 'bnode':
+			return '_:' + term.value;
+		case 'literal':
+			return '"' + term.value + '"'; // TODO datatype, lang
+		default:
+			return term.value;
+	}
+}
+
+function process(term) {
+	return turtle(term);
+}
+
+function bind(exp, binding) {
+	switch (exp.type) {
+		case 'operation':
+			return {
+				type: 'operation',
+				operator: exp.operator,
+				args: exp.args.map(arg => bind(arg, binding))
+			};
+		case 'variable':
+			return binding[exp.value];
+		case 'literal':
+			// should evaluate as-is
+			exp.ground = true;
+		default:
+			return exp;
+	}
+}
+
+function evaluateExpression(exp) {
+	switch (exp.type) {
+		case 'operation':
+			switch (exp.operator) {
+				case 'http://ns.inria.fr/sparql-template/apply-templates':
+					let t = exp.args[0];
+					return applyTemplates(t);
+				default:
+					let m = 'Function <' + exp.operator + '> undefined';
+					return Promise.reject(new Error(m));
+			}
+		case 'literal':
+			if (exp.ground) return Promise.resolve(exp.value);
+		case 'uri':
+		case 'bnode':
+			return Promise.resolve(process(exp));
+		default:
+			return Promise.resolve('');
+	}
+}
+
+function variables(exp) {
+	switch (exp.type) {
+		case 'operation':
+			return exp.args.reduce((v, arg) => v.concat(variables(arg)), []);
+		case 'variable':
+			return ['?' + exp.value];
+		default:
+			return [];
+	}
+}
+
+function applyTemplate(tpl, binding) {
+	if (!tpl || tpl.queryType != 'TEMPLATE') {
+		return '';
+	}
+	
+	let jsonQuery = {
+		type: 'query',
+		queryType: 'SELECT',
+		prefixes: tpl.prefixes,
+		variables: tpl.expressions.reduce((v, e) => v.concat(variables(e)), []),
+		where: tpl.where
+	}
+	
+	if (binding) {
+		let values = {};
+		for (v in binding) { values['?' + v] = binding[v].value }
+		
+		jsonQuery.where.unshift({
+			type: 'values',
+			values: [values]
+		});
+	}
+	
+	let query = generator.stringify(jsonQuery);
+	
+	return sparql(query).then(resp => {
+		let bindings = resp.results.bindings;
+		let group = bindings.map(b => {
+			let evaluated = tpl.expressions.map(e => evaluateExpression(bind(e, b)));
+			return Promise.all(evaluated).then(e => e.join(''));
+		});
+		
+		let sep = tpl.separator || '\n';
+		return Promise.all(group).then(g => g.join(sep));
+	});
+}
+
+function applyTemplatesAll(term) {
+	let b = term ? { 'in': term } : null;
+	return directory.map(tpl => applyTemplate(tpl, b)).join('');
+}
+
+function applyTemplates(term) {
+	// TODO detect loop in template selecion (pair <focus node, template>)
+	let b = term ? { 'in': term } : null;
+	
+	return directory.reduce((application, tpl) => {
+		return application.then(str => str || applyTemplate(tpl, b));
+	}, Promise.resolve('')).then(str => {
+		return str || turtle(term);
+	}).catch(err => console.error(err));
+}
+
+function callTemplate(uri, ...terms) {
+	let tpl = directory.find(tpl => tpl.name = uri);
+	if (!tpl) return '';
+	
+	let b = tpl.parameters.reduce((b, p, i) => b[p] = terms[i], {});
+	return applyTemplate(tpl, b);
+}
+
+module.exports = {
+	// http://ns.inria.fr/sparql-template/apply-templates
+	applyTemplates: applyTemplates,
+	// http://ns.inria.fr/sparql-template/call-template
+	callTemplate: callTemplate,
+	
+	// general configuration
+	connect: arg => {
+		if (typeof arg === 'string') endpoint = arg;
+		else if (typeof arg === 'function') fn = arg;
+	},
+	register: tpl => {
+		directory.push(tpl);
+		for (p in tpl.prefixes) prefixes[p] = tpl.prefixes[p];
+	},
+	clear: () => {
+		directory = [];
+		prefixes = {};
+	}
+};
