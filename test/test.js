@@ -47,8 +47,12 @@ describe('st:call-template', () => {
 	*/
 	it('2.3 Named Template', () => {
 		setup('structure3');
-		return sttl.applyTemplates().then(str => {
-			assert.ok(false); // TODO
+		let alice = {
+			type: 'uri',
+			value: 'http://example.org/ns/Alice'
+		};
+		return sttl.callTemplate('http://example.org/ns/display', alice).then(str => {
+			assert.strictEqual(str, 'ex:Bob');
 		});
 	});
 })

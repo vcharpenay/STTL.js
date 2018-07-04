@@ -1,20 +1,25 @@
 const generator = new require('sparqljs').Generator();
 const fetch = require('node-fetch');
 
+function err(e) {
+	console.error(e);
+}
+
 // SPARQL configuration
 let endpoint = 'http://localhost';
 let fn = null;
 
 function sparql(q) {
 	if (fn) {
-		return fn(q);
+		let res = fn(q);
+		return (res instanceof Promise) ? res : Promise.resolve(res);
 	} else if (endpoint) {
 		return fetch(endpoint, {
 			body: q,
 			method: 'POST',
 			headers: {
-			'content-type': 'application/sparql-query',
-			'accept': 'application/sparql-results+json'
+				'content-type': 'application/sparql-query',
+				'accept': 'application/sparql-results+json'
 			}
 		}).then(resp => resp.json());
 	} else {
@@ -78,6 +83,8 @@ function evaluateExpression(exp) {
 				case 'http://ns.inria.fr/sparql-template/apply-templates':
 					let t = exp.args[0];
 					return applyTemplates(t);
+				case 'http://ns.inria.fr/sparql-template/call-template':
+					return callTemplate(); // FIXME
 				default:
 					let m = 'Function <' + exp.operator + '> undefined';
 					return Promise.reject(new Error(m));
@@ -149,19 +156,23 @@ function applyTemplates(term) {
 	// TODO detect loop in template selecion (pair <focus node, template>)
 	let b = term ? { 'in': term } : null;
 	
-	return directory.reduce((application, tpl) => {
+	let zeroParams = directory.filter(tpl => (tpl.parameters || []).length === 0);
+	return zeroParams.reduce((application, tpl) => {
 		return application.then(str => str || applyTemplate(tpl, b));
 	}, Promise.resolve('')).then(str => {
 		return str || turtle(term);
-	}).catch(err => console.error(err));
+	}).catch(err);
 }
 
 function callTemplate(uri, ...terms) {
 	let tpl = directory.find(tpl => tpl.name = uri);
 	if (!tpl) return '';
 	
-	let b = tpl.parameters.reduce((b, p, i) => b[p] = terms[i], {});
-	return applyTemplate(tpl, b);
+	let b = tpl.parameters.reduce((b, p, i) => {
+		b[p.substring(1)] = terms[i];
+		return b;
+	}, {});
+	return applyTemplate(tpl, b).catch(err);
 }
 
 module.exports = {
