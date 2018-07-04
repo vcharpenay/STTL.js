@@ -2,10 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const sttl = require('../src/sttl.js');
 
-function setup(name) {
-	let tpl = fs.readFileSync('test/templates/' + name + '.tpl', 'utf-8');
+function setup(...names) {
 	sttl.clear();
-	sttl.register(JSON.parse(tpl)); // TODO STTL syntax
+	names.forEach(n => {
+		let tpl = fs.readFileSync('test/templates/' + n + '.tpl', 'utf-8');
+		sttl.register(JSON.parse(tpl)); // TODO STTL syntax
+	});
 }
 
 before(() => {
@@ -42,16 +44,28 @@ describe('st:apply-templates', () => {
 });
 
 describe('st:call-template', () => {
+	let display = 'http://example.org/ns/display';
+	let alice = {
+		type: 'uri',
+		value: 'http://example.org/ns/Alice'
+	};
+		
 	/**
 	* http://ns.inria.fr/sparql-template/#structure3
 	*/
 	it('2.3 Named Template', () => {
 		setup('structure3');
-		let alice = {
-			type: 'uri',
-			value: 'http://example.org/ns/Alice'
-		};
-		return sttl.callTemplate('http://example.org/ns/display', alice).then(str => {
+		return sttl.callTemplate(display, alice).then(str => {
+			assert.strictEqual(str, 'ex:Bob');
+		});
+	});
+	
+	/**
+	 * http://ns.inria.fr/sparql-template/#template3
+	 */
+	it('4.3 Named Template Processing', () => {
+		setup('structure3', 'template3');
+		return sttl.applyTemplates(alice).then(str => {
 			assert.strictEqual(str, 'ex:Bob');
 		});
 	});

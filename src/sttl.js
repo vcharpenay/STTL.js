@@ -84,7 +84,8 @@ function evaluateExpression(exp) {
 					let t = exp.args[0];
 					return applyTemplates(t);
 				case 'http://ns.inria.fr/sparql-template/call-template':
-					return callTemplate(); // FIXME
+					let [uri, ...params] = exp.args;
+					return callTemplate(uri.value, ...params);
 				default:
 					let m = 'Function <' + exp.operator + '> undefined';
 					return Promise.reject(new Error(m));
