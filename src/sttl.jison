@@ -453,7 +453,7 @@ TemplateClause
     : 'TEMPLATE' NameArg? '{' TExpression* Separator? '}' -> extend({ queryType: 'TEMPLATE', expressions: $4 }, $2, $5)
     ;
 TExpression
-    : TemplatePrimaryExpression
+    : TPrimaryExpression
     | Box
     | Format
     | Group 
@@ -465,13 +465,13 @@ VarList
     : '(' VAR* ')' -> $2.map(toVar)
     ;
 Group
-    : 'GROUP' 'DISTINCT'? '{' ( TemplatePrimaryExpression | Box | Format )* Separator ? '}' -> {} /* TODO */
+    : 'GROUP' 'DISTINCT'? '{' ( TPrimaryExpression | Box | Format )* Separator ? '}' -> {} /* TODO */
     ;
 Box
     : 'BOX'  '{' TExpression* '}' -> {} /* TODO */
     ;
 Format
-    : 'FORMAT' '{' TemplatePrimaryExpression TExpression+ '}' -> {} /* TODO */
+    : 'FORMAT' '{' TPrimaryExpression TExpression+ '}' -> {} /* TODO */
     ;
 Separator
     : ';' 'SEPARATOR' '=' String { separator: $4 }
@@ -480,9 +480,9 @@ Pragma
     : 'PRAGMA' '{' Triple+ '}' -> {} /* TODO */
     ;
 Function
-    : 'FUNCTION' iri VarList '{' TemplatePrimaryExpression '}' -> {} /* TODO */
+    : 'FUNCTION' iri VarList '{' TPrimaryExpression '}' -> {} /* TODO */
     ;
-TemplatePrimaryExpression
+TPrimaryExpression
     : BrackettedExpression
     | BuiltInCall
     | FunctionCall
