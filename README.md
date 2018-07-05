@@ -12,15 +12,22 @@ const sttl = require('sttl');
 // configuration
 sttl.connect('a SPARQL endpoint URL');
 sttl.register(
-	'template { ?in " " ?p " " ?o " ." }' +
-	'where { ?in ?p ?o . filter (isURI(?in) && isURI(?o)) }'
+  'template { ?in " " ?p " " ?o " ." }' +
+  'where { ?in ?p ?o . filter (isURI(?in) && isURI(?o)) }'
 );
 
-sttl.applyTemplates(); // output: triples in N-Triple format
+// Promise-based API
+sttl.applyTemplates().then(ntriples => console.log(ntriples));
 ```
 
 ## Build
 
 ```
 $ npm install
+```
+
+To use in the browser (requires [Browserify](http://browserify.org/)):
+
+```
+$ browserify src/sttl.js -s sttl -o bin/sttl-browser.js
 ```

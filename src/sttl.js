@@ -1,5 +1,7 @@
-const generator = new require('sparqljs').Generator();
+const sparqljs = require('sparqljs');
 const fetch = require('node-fetch');
+
+const generator = new sparqljs.Generator();
 
 function err(e) {
 	console.error(e);
@@ -150,7 +152,11 @@ function applyTemplate(tpl, binding) {
 
 function applyTemplatesAll(term) {
 	let b = term ? { 'in': term } : null;
-	return directory.map(tpl => applyTemplate(tpl, b)).join('');
+	
+	let zeroParams = directory.filter(tpl => (tpl.parameters || []).length === 0);
+	return Promise.all(zeroParams.map(tpl => applyTemplate(tpl, b))).then(str => {
+		return str.join('');
+	}).catch(err);
 }
 
 function applyTemplates(term) {
