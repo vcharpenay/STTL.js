@@ -5,8 +5,8 @@ const sttl = require('../src/sttl.js');
 function setup(...names) {
 	sttl.clear();
 	names.forEach(n => {
-		let tpl = fs.readFileSync('test/templates/' + n + '.tpl', 'utf-8');
-		sttl.register(JSON.parse(tpl)); // TODO STTL syntax
+		let str = fs.readFileSync('test/templates/' + n + '.tpl', 'utf-8');
+		sttl.register(str);
 	});
 }
 

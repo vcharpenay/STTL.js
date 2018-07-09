@@ -441,7 +441,7 @@ WithPrologue
       if (Parser.base)
         $2.base = Parser.base;
       Parser.base = base = basePath = baseRoot = '';
-      $2.prefixes = Parser.prefixes;
+      $2.prefixes = Parser.prefixes || {};
       Parser.prefixes = null;
       return $2;
     }

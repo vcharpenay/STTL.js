@@ -1,6 +1,7 @@
 const sparqljs = require('sparqljs');
 const fetch = require('node-fetch');
 
+const parser = require('./parser.js');
 const generator = new sparqljs.Generator();
 
 function err(e) {
@@ -60,8 +61,27 @@ function process(term) {
 	return turtle(term);
 }
 
+function expressionType(exp) {
+	if (typeof exp === 'string') {
+		if (exp.startsWith('?')) return 'variable';
+		if (exp.match(/".*"/)) return 'literal';
+		if (exp.startsWith('_:')) return 'bnode';
+		return 'uri';
+	} else if (typeof exp === 'object' && exp.type) {
+		return exp.type;
+	} else {
+		return '';
+	}
+}
+
 function bind(exp, binding) {
-	switch (exp.type) {
+	switch (expressionType(exp)) {
+		case 'functionCall':
+			return {
+				type: 'functionCall',
+				function: exp.function,
+				args: exp.args.map(arg => bind(arg, binding))
+			};
 		case 'operation':
 			return {
 				type: 'operation',
@@ -69,31 +89,34 @@ function bind(exp, binding) {
 				args: exp.args.map(arg => bind(arg, binding))
 			};
 		case 'variable':
-			return binding[exp.value];
+			return binding[exp.substring(1)];
 		case 'literal':
 			// should evaluate as-is
-			exp.ground = true;
 		default:
 			return exp;
 	}
 }
 
 function evaluateExpression(exp) {
-	switch (exp.type) {
-		case 'operation':
-			switch (exp.operator) {
+	switch (expressionType(exp)) {
+		case 'functionCall':
+			switch (exp.function) {
 				case 'http://ns.inria.fr/sparql-template/apply-templates':
 					let t = exp.args[0];
 					return applyTemplates(t);
 				case 'http://ns.inria.fr/sparql-template/call-template':
 					let [uri, ...params] = exp.args;
-					return callTemplate(uri.value, ...params);
+					return callTemplate(uri, ...params);
 				default:
 					let m = 'Function <' + exp.operator + '> undefined';
 					return Promise.reject(new Error(m));
 			}
 		case 'literal':
-			if (exp.ground) return Promise.resolve(exp.value);
+			if (typeof exp === 'string') {
+				// ground literal, part of template
+				let val = exp.substring(1, exp.length - 1);
+				return Promise.resolve(val);
+			}
 		case 'uri':
 		case 'bnode':
 			return Promise.resolve(process(exp));
@@ -103,11 +126,12 @@ function evaluateExpression(exp) {
 }
 
 function variables(exp) {
-	switch (exp.type) {
+	switch (expressionType(exp)) {
+		case 'functionCall':
 		case 'operation':
 			return exp.args.reduce((v, arg) => v.concat(variables(arg)), []);
 		case 'variable':
-			return ['?' + exp.value];
+			return [exp];
 		default:
 			return [];
 	}
@@ -193,7 +217,8 @@ module.exports = {
 		if (typeof arg === 'string') endpoint = arg;
 		else if (typeof arg === 'function') fn = arg;
 	},
-	register: tpl => {
+	register: str => {
+		let tpl = parser.parse(str);
 		directory.push(tpl);
 		for (p in tpl.prefixes) prefixes[p] = tpl.prefixes[p];
 	},

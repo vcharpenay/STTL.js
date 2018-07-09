@@ -24,6 +24,8 @@ sttl.applyTemplates().then(ntriples => console.log(ntriples));
 
 ```
 $ npm install
+$ npm run-script build
+$ npm test
 ```
 
 To use in the browser (requires [Browserify](http://browserify.org/)):
