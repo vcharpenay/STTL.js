@@ -28,8 +28,8 @@ $ npm run-script build
 $ npm test
 ```
 
-To use in the browser (requires [Browserify](http://browserify.org/)):
+To use in the browser:
 
 ```
-$ browserify src/sttl.js -s sttl -o bin/sttl-browser.js
+$ npm run-script build-browser
 ```

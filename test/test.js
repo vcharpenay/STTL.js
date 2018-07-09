@@ -70,3 +70,13 @@ describe('st:call-template', () => {
 		});
 	});
 })
+
+describe('built-in operations', () => {
+	it('should evaluate str() in template', () => {
+		setup('operation');
+		return sttl.applyTemplates().then(str => {
+			// regex: single absolute URI
+			assert.ok(str.match(/^(([^:\/?#]+):)(\/\/([^\/?#]*))([^?#]*)(\?([^#]*))?(#(.*))?/));
+		});
+	})
+});

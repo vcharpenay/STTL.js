@@ -4,10 +4,6 @@ const fetch = require('node-fetch');
 const parser = require('./parser.js');
 const generator = new sparqljs.Generator();
 
-function err(e) {
-	console.error(e);
-}
-
 // SPARQL configuration
 let endpoint = 'http://localhost';
 let fn = null;
@@ -30,36 +26,15 @@ function sparql(q) {
 	}
 }
 
-// collection of templates tested by applyTemplates()
+/**
+ * collection of templates tested by applyTemplates()
+ */
 let directory = [];
 
-// merged prefixes from all templates
+/**
+ * merged prefixes from all templates
+ */
 let prefixes = {};
-
-function turtle(term) {
-	switch (term.type) {
-		case 'uri':
-			for (p in prefixes) {
-				let uri = term.value;
-				let ns = prefixes[p];
-				if (uri.startsWith(ns)) {
-					let name = uri.substring(ns.length);
-					return p + ':' + name;
-				}
-			}
-			return '<' + term.value + '>';
-		case 'bnode':
-			return '_:' + term.value;
-		case 'literal':
-			return '"' + term.value + '"'; // TODO datatype, lang
-		default:
-			return term.value;
-	}
-}
-
-function process(term) {
-	return turtle(term);
-}
 
 function expressionType(exp) {
 	if (typeof exp === 'string') {
@@ -74,52 +49,129 @@ function expressionType(exp) {
 	}
 }
 
-function bind(exp, binding) {
-	switch (expressionType(exp)) {
-		case 'functionCall':
-			return {
-				type: 'functionCall',
-				function: exp.function,
-				args: exp.args.map(arg => bind(arg, binding))
-			};
-		case 'operation':
-			return {
-				type: 'operation',
-				operator: exp.operator,
-				args: exp.args.map(arg => bind(arg, binding))
-			};
-		case 'variable':
-			return binding[exp.substring(1)];
+/**
+ * from SPARQL JSON format to plain string
+ */
+function plain(term) {
+	if (!term) return '';
+	
+	switch (term.type) {
 		case 'literal':
-			// should evaluate as-is
+			return '"' + term.value + '"';
+		case 'bnode':
+			return '_:' + term.value;
+		case 'uri':
+			return term.value;
 		default:
-			return exp;
+			return '';
 	}
 }
 
-function evaluateExpression(exp) {
+function turtle(term) {
+	if (!term) return '';
+	
+	switch (term.type) {
+		case 'uri':
+			for (p in prefixes) {
+				let uri = term.value;
+				let ns = prefixes[p];
+				if (uri.startsWith(ns)) {
+					let name = uri.substring(ns.length);
+					return p + ':' + name;
+				}
+			}
+			return '<' + term.value + '>';
+		case 'bnode':
+			return '_:' + term.value;
+		case 'literal':
+			 // TODO datatype & lang
+			return '"' + term.value + '"';
+		default:
+			return '';
+	}
+}
+
+/**
+ * see also turtle(), opposite function
+ */
+function term(ttl) {
+	if (!ttl || typeof ttl != 'string') return '';
+	
+	if (ttl.match(/(".*")|(<.*>)/)) {
+		let v = ttl.substring(1, ttl.length - 1);
+		return {
+			type: ttl[0] === '<' ? 'uri' : 'literal',
+			value: v
+		};
+	} else if (ttl.match(/[^_]*:.*/)) {
+		let [prefix, name] = ttl.split(':'); 
+		return {
+			type: 'uri',
+			value: prefixes[prefix] + name
+		};
+	} else if (ttl.match(/_:.*/)) {
+		return {
+			type: 'bnode',
+			value: ttl.substring(2)
+		}
+	} else {
+		return {};
+	}
+}
+
+function process(term) {
+	return turtle(term);
+}
+
+function evaluateExpression(exp, binding) {
 	switch (expressionType(exp)) {
 		case 'functionCall':
 			switch (exp.function) {
 				case 'http://ns.inria.fr/sparql-template/apply-templates':
-					let t = exp.args[0];
-					return applyTemplates(t);
+					let arg = exp.args[0];
+					return evaluateExpression(arg, binding).then(str => {
+						let t = term(str);
+						return applyTemplates(t);
+					});
 				case 'http://ns.inria.fr/sparql-template/call-template':
 					let [uri, ...params] = exp.args;
-					return callTemplate(uri, ...params);
+					let evaluated = params.map(p => evaluateExpression(p, binding));
+					return Promise.all(evaluated).then(ttl => {
+						let terms = ttl.map(term);
+						return callTemplate(uri, ...terms);
+					})
 				default:
-					let m = 'Function <' + exp.operator + '> undefined';
+					let m = 'Function <' + exp.function + '> undefined';
 					return Promise.reject(new Error(m));
 			}
+		case 'operation':
+			// TODO embed in parent SPARQL query instead
+			let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+			return Promise.all(evaluated).then(ttl => {
+				let args = ttl.map(term).map(plain);
+				let v = '?exp';
+				tpl = {
+					type: 'query',
+					queryType: 'TEMPLATE',
+					expressions: [v],
+					where: [{
+						type: 'bind',
+						variable: v,
+						expression: {
+							type: 'operation',
+							operator: exp.operator,
+							args: args
+						}
+					}]
+				};
+				return applyTemplate(tpl);
+			});
 		case 'literal':
-			if (typeof exp === 'string') {
-				// ground literal, part of template
-				let val = exp.substring(1, exp.length - 1);
-				return Promise.resolve(val);
-			}
-		case 'uri':
-		case 'bnode':
-			return Promise.resolve(process(exp));
+			let value = exp.substring(1, exp.length - 1);
+			return Promise.resolve(value);
+		case 'variable':
+			let t = binding[exp.substring(1)];
+			return Promise.resolve(process(t));
 		default:
 			return Promise.resolve('');
 	}
@@ -139,7 +191,8 @@ function variables(exp) {
 
 function applyTemplate(tpl, binding) {
 	if (!tpl || tpl.queryType != 'TEMPLATE') {
-		return '';
+		let m = 'Input argument is not a SPARQL template';
+		return Promise.reject(new Error(m));
 	}
 	
 	let jsonQuery = {
@@ -152,7 +205,7 @@ function applyTemplate(tpl, binding) {
 	
 	if (binding) {
 		let values = {};
-		for (v in binding) { values['?' + v] = binding[v].value }
+		for (v in binding) values['?' + v] = plain(binding[v]);
 		
 		jsonQuery.where.unshift({
 			type: 'values',
@@ -165,7 +218,7 @@ function applyTemplate(tpl, binding) {
 	return sparql(query).then(resp => {
 		let bindings = resp.results.bindings;
 		let group = bindings.map(b => {
-			let evaluated = tpl.expressions.map(e => evaluateExpression(bind(e, b)));
+			let evaluated = tpl.expressions.map(e => evaluateExpression(e, b));
 			return Promise.all(evaluated).then(e => e.join(''));
 		});
 		
@@ -180,7 +233,7 @@ function applyTemplatesAll(term) {
 	let zeroParams = directory.filter(tpl => (tpl.parameters || []).length === 0);
 	return Promise.all(zeroParams.map(tpl => applyTemplate(tpl, b))).then(str => {
 		return str.join('');
-	}).catch(err);
+	});
 }
 
 function applyTemplates(term) {
@@ -192,18 +245,21 @@ function applyTemplates(term) {
 		return application.then(str => str || applyTemplate(tpl, b));
 	}, Promise.resolve('')).then(str => {
 		return str || turtle(term);
-	}).catch(err);
+	});
 }
 
 function callTemplate(uri, ...terms) {
 	let tpl = directory.find(tpl => tpl.name = uri);
-	if (!tpl) return '';
+	if (!tpl) {
+		let m = 'Template <' + uri + '> not found';
+		return Promise.reject(new Error(m));
+	};
 	
 	let b = tpl.parameters.reduce((b, p, i) => {
 		b[p.substring(1)] = terms[i];
 		return b;
 	}, {});
-	return applyTemplate(tpl, b).catch(err);
+	return applyTemplate(tpl, b);
 }
 
 module.exports = {
@@ -219,6 +275,7 @@ module.exports = {
 	},
 	register: str => {
 		let tpl = parser.parse(str);
+		if (!tpl) throw new Error('Template cannot be parsed: ' + str);
 		directory.push(tpl);
 		for (p in tpl.prefixes) prefixes[p] = tpl.prefixes[p];
 	},

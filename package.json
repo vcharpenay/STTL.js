@@ -15,6 +15,7 @@
   },
   "scripts": {
 	"build": "jison src/sttl.jison -p slr -o src/parser.js",
+	"build-browser": "browserify src/sttl.js -s sttl -o bin/sttl-browser.js",
     "test": "mocha"
   },
   "devDependencies": {
@@ -22,6 +23,7 @@
     "sparqljs": "2.0.x",
     "hylar": "1.8.4",
     "node-fetch": "2.1.2",
-    "mocha": "3.0.x"
+    "mocha": "3.0.x",
+	"browserify": "16.x.x"
   }
 }
