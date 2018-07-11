@@ -71,7 +71,21 @@ describe('st:call-template', () => {
 	});
 })
 
-describe('built-in operations', () => {
+describe('Statements', () => {
+	/**
+	 * http://ns.inria.fr/sparql-template/#statement1
+	 */
+	it('6.1 Conditional Processing', () => {
+		setup('statement1', 'statement1-adult', 'statement1-child');
+		return sttl.applyTemplates().then(str => {
+			console.log(str);
+			assert.ok(str.includes('ex:Alice is an adult.'));
+			assert.ok(str.includes('ex:Eve is a child.'));
+		});
+	});
+});
+
+describe('Built-in operations', () => {
 	it('should evaluate str() in template', () => {
 		setup('operation');
 		return sttl.applyTemplates().then(str => {

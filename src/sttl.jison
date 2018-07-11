@@ -450,7 +450,7 @@ Template
     : TemplateClause DatasetClause* WhereClause SolutionModifier ValuesClause? Pragma? Function* -> extend({ type: 'query' }, $1, $2, $3, $4, $5, $6, $7)
     ;
 TemplateClause
-    : 'TEMPLATE' NameArg? '{' TExpression* Separator? '}' -> extend({ queryType: 'TEMPLATE', expressions: $4 }, $2, $5)
+    : 'TEMPLATE' NameArg? '{' TExpression* Separator? '}' -> extend({ queryType: 'TEMPLATE', expression: { type: 'functionCall', function: 'http://ns.inria.fr/sparql-template/concat', args: $4 } }, $2, $5)
     ;
 TExpression
     : TPrimaryExpression
@@ -487,7 +487,7 @@ TPrimaryExpression
     | BuiltInCall
     | FunctionCall
     | Literal
-    | VAR -> toVar($1)
+    | VAR -> { type: 'functionCall', function: 'http://ns.inria.fr/sparql-template/process', args: [toVar($1)] }
     ;
 
 /* end STTL */
