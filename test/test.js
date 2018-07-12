@@ -86,7 +86,7 @@ describe('Statements', () => {
 	/**
 	 * http://ns.inria.fr/sparql-template/#statement2
 	 */
-	it.only('6.2 Recursion', () => {
+	it('6.2 Recursion', () => {
 		let fac = 'http://example.org/ns/fac';
 		let six = {
 			type: 'literal',

@@ -93,22 +93,25 @@ function term(plain) {
 			lang: lang,
 			datatype: datatype
 		}
-	} else if (capture = plain.match(/([^_]*):(.*)/)) {
+	} else if (plain.match(/^(([^:\/?#]+):)(\/\/([^\/?#]*))([^?#]*)(\?([^#]*))?(#(.*))?/)) {
+		return {
+			type: 'uri',
+			value: plain
+		};
+	} else if (capture = plain.match(/(\w*):(.*)/)) {
 		let [str, prefix, name] = capture; 
 		return {
 			type: 'uri',
 			value: prefixes[prefix] + name
 		};
-	} else if (plain.match(/_:.*/)) {
+	} else if (plain.match(/_:(.*)/)) {
+		let [str, name] = capture; 
 		return {
 			type: 'bnode',
-			value: plain.substring(2)
+			value: name
 		}
 	} else {
-		return {
-			type: 'uri',
-			value: plain
-		};
+		return {};
 	}
 }
 
@@ -143,93 +146,109 @@ function process(term) {
 }
 
 /**
+ * Function map for the st: namespace 
+ */
+const functions = {
+	'http://ns.inria.fr/sparql-template/apply-templates': applyTemplates,
+	'http://ns.inria.fr/sparql-template/call-template': (t, ...args) => callTemplate(t.value, ...args),
+	'http://ns.inria.fr/sparql-template/concat': (...args) => args.map(t => t.value).join(''),
+	'http://ns.inria.fr/sparql-template/process': turtle
+}
+
+/**
+ * Calls JS function with provided arguments
+ */
+function evaluateFunctionCall(exp, binding) {
+	let uri = exp.function;
+	let fn = functions[uri];
+
+	if (!fn) {
+		let m = 'Function <' + uri + '> undefined';
+		return Promise.reject(new Error(m));
+	}
+	
+	let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+	return Promise.all(evaluated)
+		.then(terms => fn(...terms))
+		.then(str => literal(str));
+}
+
+/**
+ * Delegates evaluation to SPARQL endpoint
+ */
+function evaluateOperation(exp, binding) {
+	if (exp.operator === 'if') {
+		let [condition, first, second] = exp.args;
+		
+		return evaluateExpression(condition, binding).then(t => {
+			let bool =
+				t.datatype === 'http://www.w3.org/2001/XMLSchema#boolean'
+				&& t.value === 'true';
+			return evaluateExpression(bool ? first : second, binding);
+		});
+	} else {
+		let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+		
+		return Promise.all(evaluated).then(args => {
+			let jq = {
+				type: 'query',
+				queryType: 'SELECT',
+				variables: ['?exp'],
+				where: [{
+					type: 'bind',
+					variable: '?exp',
+					expression: {
+						type: 'operation',
+						operator: exp.operator,
+						args: args.map(plain)
+					}
+				}]
+			};
+			
+			let q = generator.stringify(jq);
+			
+			return sparql(q).then(resp => {
+				let b = resp.results.bindings;
+				return b[0].exp;
+			});
+		});
+	}
+}
+
+function evaluateFormat(exp, binding) {
+	switch (expressionType(exp.pattern)) {
+		case 'literal':
+			let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+			return Promise.all(evaluated).then(args => {
+				let pattern = term(exp.pattern);
+				return {
+					type: 'literal',
+					// TODO error if arg not literal
+					value: args.reduce((v, arg) => v.replace('%s', arg.value), pattern.value)
+				}
+			});
+		case 'uri':
+			let m = 'Dereferencing IRI in FORMAT pattern is not supported';
+			return Promise.reject(new Error(m));
+		default:
+			return Promise.resolve({});
+	}
+}
+
+/**
  * Returns a term (SPARQL JSON format)
  */
 function evaluateExpression(exp, binding) {
 	switch (expressionType(exp)) {
 		case 'functionCall':
-			switch (exp.function) {
-				// TODO write generic callFunction() with function map
-				case 'http://ns.inria.fr/sparql-template/apply-templates':
-					let [arg] = exp.args;
-					return evaluateExpression(arg, binding)
-						.then(t => applyTemplates(t))
-						.then(str => literal(str));
-				case 'http://ns.inria.fr/sparql-template/call-template':
-					let [uri, ...params] = exp.args;
-					let evaluatedParams = params.map(p => evaluateExpression(p, binding));
-					return Promise.all(evaluatedParams)
-						.then(terms => callTemplate(uri, ...terms))
-						.then(str => literal(str));
-				case 'http://ns.inria.fr/sparql-template/concat':
-					let evaluatedArgs = exp.args.map(arg => evaluateExpression(arg, binding));
-					return Promise.all(evaluatedArgs).then(terms => {
-						let values = terms.map(t => t.value);
-						return literal(values.join(''));
-					});
-				case 'http://ns.inria.fr/sparql-template/process':
-					let [variable] = exp.args;
-					return evaluateExpression(variable, binding)
-						.then(t => process(t))
-						.then(str => literal(str));
-				default:
-					let m = 'Function <' + exp.function + '> undefined';
-					return Promise.reject(new Error(m));
-			}
+			return evaluateFunctionCall(exp, binding);
 		case 'operation':
-			if (exp.operator === 'if') {
-				let [condition, first, second] = exp.args;
-				// TODO fix recursion
-				return evaluateExpression(condition, binding).then(t => {
-					let bool = t.datatype === 'http://www.w3.org/2001/XMLSchema#boolean'
-						&& t.value === 'true';
-					return evaluateExpression(bool ? first : second, binding);
-				});
-			} else {
-				let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
-				return Promise.all(evaluated).then(args => {
-					let jq = {
-						type: 'query',
-						queryType: 'SELECT',
-						variables: ['?exp'],
-						where: [{
-							type: 'bind',
-							variable: '?exp',
-							expression: {
-								type: 'operation',
-								operator: exp.operator,
-								args: args.map(plain)
-							}
-						}]
-					};
-					
-					let q = generator.stringify(jq);
-					
-					return sparql(q).then(resp => {
-						let b = resp.results.bindings;
-						return b[0].exp;
-					});
-				});
-			}
+			return evaluateOperation(exp, binding);
 		case 'format':
-			switch (expressionType(exp.pattern)) {
-				case 'literal':
-					let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
-					return Promise.all(evaluated).then(args => {
-						let pattern = term(exp.pattern);
-						return {
-							type: 'literal',
-							// TODO error if arg not literal
-							value: args.reduce((v, arg) => v.replace('%s', arg.value), pattern.value)
-						}
-					});
-				case 'uri':
-					let m = 'Dereferencing IRI in FORMAT pattern is not supported';
-					return Promise.reject(new Error(m));
-				default:
-					return Promise.resolve({});
-			}
+			return evaluateFormat(exp, binding);
 		case 'literal':
+		case 'uri':
+		case 'bnode':
 			return Promise.resolve(term(exp));
 		case 'variable':
 			let t = binding[exp.substring(1)];
