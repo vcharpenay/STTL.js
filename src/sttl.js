@@ -22,7 +22,8 @@ function sparql(q) {
 			}
 		}).then(resp => resp.json());
 	} else {
-		return Promise.reject(new Error('No suitable SPARQL configuration found'));
+		let m = 'No suitable SPARQL configuration found';
+		return Promise.reject(new Error(m));
 	}
 }
 
@@ -77,6 +78,40 @@ function plain(term) {
 	}
 }
 
+/**
+ * inverse transformation of plain()
+ */
+function term(plain) {
+	if (!plain || typeof plain != 'string') return '';
+	
+	let capture = null;
+	if (capture = plain.match(/"(.*)"(@.*)?(\^\^(.*))?/)) {
+		let [str, lit, lang, suffix, datatype] = capture;
+		return {
+			type: 'literal',
+			value: lit,
+			lang: lang,
+			datatype: datatype
+		}
+	} else if (capture = plain.match(/([^_]*):(.*)/)) {
+		let [str, prefix, name] = capture; 
+		return {
+			type: 'uri',
+			value: prefixes[prefix] + name
+		};
+	} else if (plain.match(/_:.*/)) {
+		return {
+			type: 'bnode',
+			value: plain.substring(2)
+		}
+	} else {
+		return {
+			type: 'uri',
+			value: plain
+		};
+	}
+}
+
 function turtle(term) {
 	if (!term) return '';
 	
@@ -94,48 +129,12 @@ function turtle(term) {
 		case 'bnode':
 			return '_:' + term.value;
 		case 'literal':
+			// TODO numeric values (no quote)
 			return '"' + term.value + '"'
 				+ (term.lang ? '@' + term.lang : '')
 				+ (term.datatype ? '^^' + turtle(term.datatype) : '');
 		default:
 			return '';
-	}
-}
-
-/**
- * see also turtle(), opposite function
- */
-function term(ttl) {
-	if (!ttl || typeof ttl != 'string') return '';
-	
-	let capture = null;
-	if (capture = ttl.match(/"(.*)"(@.*)?(\^\^<(.*)>)?/)) {
-		let [str, lit, lang, suffix, datatype] = capture;
-		return {
-			type: 'literal',
-			value: lit,
-			lang: lang,
-			datatype: datatype
-		}
-	} else if (capture = ttl.match(/<(.*)>/)) {
-		let [str, uri] = capture;
-		return {
-			type: 'uri',
-			value: uri
-		};
-	} else if (capture = ttl.match(/([^_]*):(.*)/)) {
-		let [str, prefix, name] = capture; 
-		return {
-			type: 'uri',
-			value: prefixes[prefix] + name
-		};
-	} else if (ttl.match(/_:.*/)) {
-		return {
-			type: 'bnode',
-			value: ttl.substring(2)
-		}
-	} else {
-		return {};
 	}
 }
 
@@ -150,6 +149,7 @@ function evaluateExpression(exp, binding) {
 	switch (expressionType(exp)) {
 		case 'functionCall':
 			switch (exp.function) {
+				// TODO write generic callFunction() with function map
 				case 'http://ns.inria.fr/sparql-template/apply-templates':
 					let [arg] = exp.args;
 					return evaluateExpression(arg, binding)
@@ -177,28 +177,40 @@ function evaluateExpression(exp, binding) {
 					return Promise.reject(new Error(m));
 			}
 		case 'operation':
-			let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
-			return Promise.all(evaluated).then(args => {
-				let jq = {
-					type: 'query',
-					queryType: 'SELECT',
-					variables: ['?exp'],
-					where: [{
-						type: 'bind',
-						variable: '?exp',
-						expression: {
-							type: 'operation',
-							operator: exp.operator,
-							args: args.map(plain)
-						}
-					}]
-				};
-				let q = generator.stringify(jq);
-				return sparql(q).then(resp => {
-					let b = resp.results.bindings;
-					return b[0].exp;
+			if (exp.operator === 'if') {
+				let [condition, first, second] = exp.args;
+				// TODO fix recursion
+				return evaluateExpression(condition, binding).then(t => {
+					let bool = t.datatype === 'http://www.w3.org/2001/XMLSchema#boolean'
+						&& t.value === 'true';
+					return evaluateExpression(bool ? first : second, binding);
 				});
-			});
+			} else {
+				let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+				return Promise.all(evaluated).then(args => {
+					let jq = {
+						type: 'query',
+						queryType: 'SELECT',
+						variables: ['?exp'],
+						where: [{
+							type: 'bind',
+							variable: '?exp',
+							expression: {
+								type: 'operation',
+								operator: exp.operator,
+								args: args.map(plain)
+							}
+						}]
+					};
+					
+					let q = generator.stringify(jq);
+					
+					return sparql(q).then(resp => {
+						let b = resp.results.bindings;
+						return b[0].exp;
+					});
+				});
+			}
 		case 'format':
 			switch (expressionType(exp.pattern)) {
 				case 'literal':

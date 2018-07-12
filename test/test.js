@@ -84,6 +84,23 @@ describe('Statements', () => {
 	});
 	
 	/**
+	 * http://ns.inria.fr/sparql-template/#statement2
+	 */
+	it.only('6.2 Recursion', () => {
+		let fac = 'http://example.org/ns/fac';
+		let six = {
+			type: 'literal',
+			value: '6',
+			datatype: 'http://www.w3.org/2001/XMLSchema#integer'
+		};
+		
+		setup('statement2');
+		return sttl.callTemplate(fac, six).then(str => {
+			assert.strictEqual(str, '6.5.4.3.2.1.0');
+		});
+	});
+	
+	/**
 	 * http://ns.inria.fr/sparql-template/#statement6
 	 */
 	it('6.6 Format', () => {
