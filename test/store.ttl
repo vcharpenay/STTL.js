@@ -16,3 +16,6 @@ ex:Alice a foaf:Person ;
 ex:Eve a foaf:Person ;
        foaf:age "17" ;
        foaf:knows ex:Mallory .
+	   
+ex:website ex:title "Alice" ;
+           ex:text "Personal website" .

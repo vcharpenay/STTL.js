@@ -199,6 +199,24 @@ function evaluateExpression(exp, binding) {
 					return b[0].exp;
 				});
 			});
+		case 'format':
+			switch (expressionType(exp.pattern)) {
+				case 'literal':
+					let evaluated = exp.args.map(arg => evaluateExpression(arg, binding));
+					return Promise.all(evaluated).then(args => {
+						let pattern = term(exp.pattern);
+						return {
+							type: 'literal',
+							// TODO error if arg not literal
+							value: args.reduce((v, arg) => v.replace('%s', arg.value), pattern.value)
+						}
+					});
+				case 'uri':
+					let m = 'Dereferencing IRI in FORMAT pattern is not supported';
+					return Promise.reject(new Error(m));
+				default:
+					return Promise.resolve({});
+			}
 		case 'literal':
 			return Promise.resolve(term(exp));
 		case 'variable':
@@ -213,6 +231,7 @@ function variables(exp) {
 	switch (expressionType(exp)) {
 		case 'functionCall':
 		case 'operation':
+		case 'format':
 			return exp.args.reduce((v, arg) => v.concat(variables(arg)), []);
 		case 'variable':
 			return [exp];
@@ -232,11 +251,13 @@ function applyTemplate(tpl, binding) {
 	
 	let patterns = [];
 	if (binding) {
-		patterns = Object.entries(binding).map(([v, t]) => ({
-			type: 'bind',
-			variable: '?' + v,
-			expression: plain(t)
-		}));
+		patterns = Object.entries(binding)
+			.filter(([v, t]) => t.type === 'uri' || t.type === 'literal')
+			.map(([v, t]) => ({
+				type: 'bind',
+				variable: '?' + v,
+				expression: plain(t)
+			}));
 	}
 	
 	let jsonQuery = {

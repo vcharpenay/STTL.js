@@ -78,9 +78,18 @@ describe('Statements', () => {
 	it('6.1 Conditional Processing', () => {
 		setup('statement1', 'statement1-adult', 'statement1-child');
 		return sttl.applyTemplates().then(str => {
-			console.log(str);
 			assert.ok(str.includes('ex:Alice is an adult.'));
 			assert.ok(str.includes('ex:Eve is a child.'));
+		});
+	});
+	
+	/**
+	 * http://ns.inria.fr/sparql-template/#statement6
+	 */
+	it('6.6 Format', () => {
+		setup('statement6');
+		return sttl.applyTemplates().then(str => {
+			assert.strictEqual(str, '<h1>Alice</h1><p>Personal website</p>');
 		});
 	});
 });

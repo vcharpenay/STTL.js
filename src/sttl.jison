@@ -253,6 +253,16 @@
     }
     return merged;
   }
+  
+  // if st:process(exp), returns exp
+  function unprocessed(exp) {
+	  if (exp.type === 'functionCall'
+		&& exp.function === 'http://ns.inria.fr/sparql-template/process') {
+		  return exp.args[0];
+	  } else {
+		  return exp;
+	  }
+  }
 %}
 
 %lex
@@ -471,7 +481,7 @@ Box
     : 'BOX'  '{' TExpression* '}' -> {} /* TODO */
     ;
 Format
-    : 'FORMAT' '{' TPrimaryExpression TExpression+ '}' -> {} /* TODO */
+    : 'FORMAT' '{' TPrimaryExpression TExpression+ '}' -> { type: 'format', pattern: $3, args: $4.map(unprocessed) }
     ;
 Separator
     : ';' 'SEPARATOR' '=' String { separator: $4 }
