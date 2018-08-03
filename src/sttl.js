@@ -290,12 +290,16 @@ function applyTemplate(tpl, binding) {
 				expression: plain(t)
 			}));
 	}
+    
+    let vars = variables(tpl.expression);
+    // TODO instead, directly evaluate expression (see TODO below)
+    if (vars.length === 0) vars.push('*');
 	
 	let jsonQuery = {
 		type: 'query',
 		queryType: 'SELECT',
 		prefixes: tpl.prefixes,
-		variables: variables(tpl.expression),
+		variables: vars,
 		where: patterns.concat(tpl.where),
 		distinct: true
 	}
