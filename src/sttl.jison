@@ -469,7 +469,7 @@ TExpression
     | Group 
     ;
 NameArg
-    : iri VarList? -> { name: $1, parameters: $2 }
+    : iri VarList? -> { name: $1, parameters: $2 || [] }
     ;
 VarList
     : '(' VAR* ')' -> $2.map(toVar)

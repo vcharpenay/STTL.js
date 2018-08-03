@@ -296,7 +296,8 @@ function applyTemplate(tpl, binding) {
 		queryType: 'SELECT',
 		prefixes: tpl.prefixes,
 		variables: variables(tpl.expression),
-		where: patterns.concat(tpl.where)
+		where: patterns.concat(tpl.where),
+		distinct: true
 	}
 	
 	let query = generator.stringify(jsonQuery);
