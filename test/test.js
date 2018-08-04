@@ -14,6 +14,21 @@ before(() => {
 	sttl.connect('http://localhost:7200/repositories/noinf');
 	/* TODO install local RDF store
 	let triples = fs.readFileSync('test/store.ttl', 'utf-8');
+	rdf.parse(triples, store, null, 'text/turtle');
+	sttl.connect(q => {
+		return new Promise((resolve, reject) => {
+			let bindings = [];
+			let collect = b => bindings.push(b);
+			
+			let jq = rdf.SPARQLtoQuery(q);
+		
+			store.query(jq, collect, null, () => resolve({
+				results: {
+					bindings: bindings
+				}
+			}));
+		});
+	});
 	return hylar.load(triples, 'text/turtle').then(() => {
 		sttl.connect(q => hylar.query(q));
 	});
@@ -70,6 +85,21 @@ describe('st:call-template', () => {
 		});
 	});
 })
+
+describe('Processing', () => {
+	/**
+	 * http://ns.inria.fr/sparql-template/#template4
+	 */
+    it('4.4 Result Processing', () => {
+		setup('template4');
+        return sttl.applyTemplates().then(str => {
+            let names = str.split(', ');
+            assert.strictEqual(names.length, 2);
+            assert.ok(names.indexOf('"Alice"') > -1);
+            assert.ok(names.indexOf('"Eve"') > -1);
+        });
+    });
+});
 
 describe('Statements', () => {
 	/**

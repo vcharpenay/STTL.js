@@ -10,10 +10,12 @@ foaf:Person rdfs:subClassOf [
 ].
 
 ex:Alice a foaf:Person ;
+         foaf:name "Alice" ;
          foaf:age 32 ;
          foaf:knows ex:Bob .
 
 ex:Eve a foaf:Person ;
+       foaf:name "Eve" ;
        foaf:age 17 ;
        foaf:knows ex:Mallory .
 	   

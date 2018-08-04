@@ -311,7 +311,7 @@ function applyTemplate(tpl, binding) {
 		// TODO if no binding but all template variables bound, then evaluate
 		let group = bindings.map(b => evaluateExpression(tpl.expression, b));
 		
-		let sep = tpl.separator || '\n';
+		let sep = tpl.separator ? term(tpl.separator).value : '\n';
 		return Promise.all(group).then(g => g.map(t => t.value).join(sep));
 	});
 }
