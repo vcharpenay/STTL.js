@@ -1,5 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
+const rdf = require('rdflib');
 const sttl = require('../src/sttl.js');
 
 function setup(...names) {
@@ -10,29 +11,19 @@ function setup(...names) {
 	});
 }
 
+function normalize(arg) {
+    return (arg.startsWith('"') && arg.endsWith('"')) ?
+        arg.substring(1, arg.length - 1) :
+        arg;
+}
+
 before(() => {
-	sttl.connect('http://localhost:7200/repositories/noinf');
-	/* TODO install local RDF store
-	let triples = fs.readFileSync('test/store.ttl', 'utf-8');
-	rdf.parse(triples, store, null, 'text/turtle');
-	sttl.connect(q => {
-		return new Promise((resolve, reject) => {
-			let bindings = [];
-			let collect = b => bindings.push(b);
-			
-			let jq = rdf.SPARQLtoQuery(q);
-		
-			store.query(jq, collect, null, () => resolve({
-				results: {
-					bindings: bindings
-				}
-			}));
-		});
-	});
-	return hylar.load(triples, 'text/turtle').then(() => {
-		sttl.connect(q => hylar.query(q));
-	});
-	*/
+    let endpoint = process.env.STTL_SPARQL_ENDPOINT;
+    if (!endpoint) throw new Error('A SPARQL endpoint URL must be provided to run tests.');
+    
+    // TODO insert data?
+    
+    sttl.connect(normalize(endpoint));
 });
 
 describe('st:apply-templates', () => {
