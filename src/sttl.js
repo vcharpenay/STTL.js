@@ -40,7 +40,7 @@ let prefixes = {};
 function expressionType(exp) {
 	if (typeof exp === 'string') {
 		if (exp.startsWith('?')) return 'variable';
-		if (exp.match(/".*"/)) return 'literal';
+		if (exp.match(/"[^]*"/)) return 'literal';
 		if (exp.startsWith('_:')) return 'bnode';
 		return 'uri';
 	} else if (typeof exp === 'object' && exp.type) {
@@ -85,7 +85,7 @@ function term(plain) {
 	if (!plain || typeof plain != 'string') return '';
 	
 	let capture = null;
-	if (capture = plain.match(/"(.*)"(@.*)?(\^\^(.*))?/)) {
+	if (capture = plain.match(/"([^]*)"(@.*)?(\^\^(.*))?/)) {
 		let [str, lit, lang, suffix, datatype] = capture;
 		return {
 			type: 'literal',

@@ -132,12 +132,19 @@ describe('Statements', () => {
 	});
 });
 
-describe('Built-in operations', () => {
-	it('should evaluate str() in template', () => {
+describe('Miscellaneous', () => {
+	it('should evaluate built-in operation str() in template', () => {
 		setup('operation');
 		return sttl.applyTemplates().then(str => {
 			// regex: single absolute URI
 			assert.ok(str.match(/^(([^:\/?#]+):)(\/\/([^\/?#]*))([^?#]*)(\?([^#]*))?(#(.*))?/));
 		});
-	})
+	});
+
+	it('should correctly process newline character in template literal', () => {
+		setup('newline');
+		return sttl.applyTemplates().then(str => {
+			assert.strictEqual(str, '\n');
+		});
+	});
 });
