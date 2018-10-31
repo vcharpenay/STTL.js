@@ -24,9 +24,11 @@
   },
   "devDependencies": {
     "jison": "0.4.18",
-    "sparqljs": "2.0.x",
-    "node-fetch": "2.1.2",
     "mocha": "3.0.x",
     "browserify": "16.x.x"
+  },
+  "dependencies": {
+    "sparqljs": "2.0.x",
+    "node-fetch": "2.1.2"
   }
 }
