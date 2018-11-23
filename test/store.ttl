@@ -14,10 +14,16 @@ ex:Alice a foaf:Person ;
          foaf:age 32 ;
          foaf:knows ex:Bob .
 
+ex:Bob a foaf:Person ;
+         foaf:name "Bob" .
+
 ex:Eve a foaf:Person ;
        foaf:name "Eve" ;
        foaf:age 17 ;
        foaf:knows ex:Mallory .
+
+ex:Mallory a foaf:Person ;
+         foaf:name "Mallory" .
 	   
 ex:website ex:title "Alice" ;
            ex:text "Personal website" .

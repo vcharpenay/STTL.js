@@ -85,9 +85,11 @@ describe('Processing', () => {
 		setup('template4');
         return sttl.applyTemplates().then(str => {
             let names = str.split(', ');
-            assert.strictEqual(names.length, 2);
+            assert.strictEqual(names.length, 4);
             assert.ok(names.indexOf('"Alice"') > -1);
+            assert.ok(names.indexOf('"Bob"') > -1);
             assert.ok(names.indexOf('"Eve"') > -1);
+            assert.ok(names.indexOf('"Mallory"') > -1);
         });
     });
 });
@@ -145,6 +147,13 @@ describe('Miscellaneous', () => {
 		setup('newline');
 		return sttl.applyTemplates().then(str => {
 			assert.strictEqual(str, '\n');
+		});
+	});
+
+	it('should correctly process the modifiers ORDER BY, OFFSET and LIMIT', () => {
+		setup('modifier');
+		return sttl.applyTemplates().then(str => {
+			assert.strictEqual(str, '"Bob", "Eve"');
 		});
 	});
 });

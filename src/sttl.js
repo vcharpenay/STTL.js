@@ -303,6 +303,13 @@ function applyTemplate(tpl, binding) {
 		where: patterns.concat(tpl.where),
 		distinct: true
 	}
+
+	// TODO DISTINCT modifier by default?
+	let modifiers = ['order', 'offset', 'limit'];
+	modifiers.forEach(modifier => {
+		let def = tpl[modifier];
+		if (def) jsonQuery[modifier] = def;
+	});
 	
 	let query = generator.stringify(jsonQuery);
 	
