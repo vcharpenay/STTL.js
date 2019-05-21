@@ -28,6 +28,7 @@
     "browserify": "16.x.x"
   },
   "dependencies": {
+    "rdflib": "0.20.1",
     "sparqljs": "2.0.x",
     "node-fetch": "2.1.2"
   }
