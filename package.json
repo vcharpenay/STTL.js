@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "jison": "0.4.18",
+    "urdf": "vcharpenay/uRDF.js",
     "mocha": "3.0.x",
     "browserify": "16.x.x"
   },

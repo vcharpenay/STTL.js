@@ -1,6 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
-const rdf = require('rdflib');
+const urdf = require('urdf');
 const sttl = require('../src/sttl.js');
 
 function setup(...names) {
@@ -11,19 +11,15 @@ function setup(...names) {
 	});
 }
 
-function normalize(arg) {
-    return (arg.startsWith('"') && arg.endsWith('"')) ?
-        arg.substring(1, arg.length - 1) :
-        arg;
-}
+before(() => {    
+	let data = fs.readFileSync('test/store.ttl', 'utf-8');
 
-before(() => {
-    let endpoint = process.env.STTL_SPARQL_ENDPOINT;
-    if (!endpoint) throw new Error('A SPARQL endpoint URL must be provided to run tests.');
+	urdf.load(data, { format: 'text/turtle' });
     
-    // TODO insert data?
-    
-    sttl.connect(normalize(endpoint));
+	sttl.connect(q => {
+		return urdf.query(q)
+		.then(b => ({ results: { bindings: b }}))
+	});
 });
 
 describe('st:apply-templates', () => {
