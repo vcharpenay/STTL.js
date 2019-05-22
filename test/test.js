@@ -71,6 +71,17 @@ describe('st:call-template', () => {
 			assert.strictEqual(str, 'ex:Bob');
 		});
 	});
+
+	/**
+	 * Tests loading more than one template in the same file
+	 * (not in the specification)
+	 */
+	it('4.3 Named Template Processing (bis)', () => {
+		setup('structure3-template3');
+		return sttl.applyTemplates(alice).then(str => {
+			assert.strictEqual(str, 'ex:Bob');
+		});
+	});
 })
 
 describe('Processing', () => {

@@ -371,8 +371,8 @@ module.exports = {
 	},
 	register: str => {
 		let tpl = parser.parse(str);
-		if (!tpl) throw new Error('Template cannot be parsed: ' + str);
-		directory.push(tpl);
+		if (!tpl) throw new Error('Template(s) cannot be parsed: ' + str);
+		directory = directory.concat(tpl);
 		for (p in tpl.prefixes) prefixes[p] = tpl.prefixes[p];
 	},
 	clear: () => {

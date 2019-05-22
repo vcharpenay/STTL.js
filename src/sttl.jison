@@ -445,7 +445,7 @@ PN_LOCAL_ESC          "\\"("_"|"~"|"."|"-"|"!"|"$"|"&"|"'"|"("|")"|"*"|"+"|","|"
 /* STTL */
 
 WithPrologue
-    : Prologue Template EOF
+    : Prologue Template+ EOF
     {
       $2 = $2 || {};
       if (Parser.base)
