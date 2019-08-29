@@ -24,6 +24,9 @@ ex:Eve a foaf:Person ;
 
 ex:Mallory a foaf:Person ;
          foaf:name "Mallory" .
-	   
+
 ex:website ex:title "Alice" ;
            ex:text "Personal website" .
+
+ex:Michel a foaf:Person ;
+          foaf:name "Michel"@fr .

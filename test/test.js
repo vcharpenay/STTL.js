@@ -92,11 +92,12 @@ describe('Processing', () => {
 		setup('template4');
         return sttl.applyTemplates().then(str => {
             let names = str.split(', ');
-            assert.strictEqual(names.length, 4);
+            assert.strictEqual(names.length, 5);
             assert.ok(names.indexOf('"Alice"') > -1);
             assert.ok(names.indexOf('"Bob"') > -1);
             assert.ok(names.indexOf('"Eve"') > -1);
             assert.ok(names.indexOf('"Mallory"') > -1);
+            assert.ok(names.indexOf('"Michel"@fr') > -1);
         });
     });
 });
@@ -161,6 +162,13 @@ describe('Miscellaneous', () => {
 		setup('modifier');
 		return sttl.applyTemplates().then(str => {
 			assert.strictEqual(str, '"Bob", "Eve"');
+		});
+	});
+
+	it('should correctly process lang-tagged and typed literals', () => {
+		setup('lang-tag');
+		return sttl.applyTemplates().then(str => {
+			assert.strictEqual(str, 'Pardon my French, Michel.');
 		});
 	});
 });
