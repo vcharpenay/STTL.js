@@ -1,0 +1,43 @@
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+prefix st: <http://ns.inria.fr/sparql-template/>
+prefix : <https://github.com/vcharpenay/sttl.js/#>
+
+# generates a DOT file for some RDF graph (using rdfs:label for human-readable names)
+
+template :main {
+    "digraph {\n"
+        st:call-template(:node)
+        st:call-template(:edge)
+    "}"
+} where {}
+
+template :node {
+    st:call-template(:id, ?node) " " st:call-template(:label, ?node)
+} where {
+    ?node rdfs:label ?l
+    filter exists {
+        { ?node ?r ?to } union { ?from ?r ?node }
+        filter (?r != rdfs:label)
+    }
+}
+
+template :edge {
+    st:call-template(:id, ?from) " -> " st:call-template(:id, ?to)
+    " "
+    st:call-template(:label, ?p)
+} where {
+    ?from ?p ?to
+    filter (?p != rdfs:label)
+}
+
+template :id(?node) {
+    format { "\"%s\"" ?node }
+} where {}
+
+template :label(?node) {
+    format { "[label=\"%s\"]" ?label }
+} where {
+    bind (str(?node) as ?default)
+    optional { ?node rdfs:label ?l }
+    bind (if(bound(?l), ?l, ?default) as ?label)
+}

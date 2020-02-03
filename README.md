@@ -21,7 +21,8 @@ sttl.applyTemplates().then(ntriples => console.log(ntriples));
 ```
 
 Instead of a remote SPARQL endpoint, a callback function returning results as SPARQL JSON
-can be given as argument of `sttl.connect()`. See tests for an example.
+can be given as argument of `sttl.connect()`. See [`/examples`](examples) for a CLI and
+example templates.
 
 ## Build
 

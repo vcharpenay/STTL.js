@@ -1,0 +1,197 @@
+prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+prefix owl: <http://www.w3.org/2002/07/owl#>
+prefix dct: <http://purl.org/dc/terms/>
+prefix schema: <http://schema.org/>
+prefix st: <http://ns.inria.fr/sparql-template/>
+prefix : <https://github.com/vcharpenay/sttl.js/#>
+
+# generates a one-page HTML documentation for a schema.org vocabulary
+
+template :main {
+    format {
+"""
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Schema.org</title>
+        <meta charset="utf-8">
+        <style>
+            body {
+                font-family: monospace;
+            }
+
+            #side-panel {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                padding: 10px;
+                overflow: scroll;
+            }
+
+            #main-panel {
+                position: fixed;
+                left: 300px;
+                top: 0;
+                bottom: 0;
+                width: 780px;
+                padding: 10px;
+                overflow: scroll;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="side-panel">
+            <h2>%s</h2>
+            <input id="filter" type="text">
+            %s
+        </div>
+
+        <div id="main-panel">
+            %s
+        </div>
+
+        <script>
+            function update() {
+                let defs = document.getElementsByClassName('def');
+                for (let i = 0; i < defs.length; i++) {
+                    defs[i].style.display = 'none';
+                }
+
+                let id = location.hash.substring(1);
+                if (id) {
+                    let def = document.getElementById(id);
+                    def.style.display = 'block';
+                }
+            }
+
+            function filter() {
+                let f = document.getElementById('filter');
+                let text = new RegExp(f.value, 'i');
+
+                let items = document.getElementsByClassName('toc');
+                for (let i = 0; i < items.length; i++) {
+                    let item = items[i];
+                    if (!text.test(item.textContent)) item.style.display = 'none';
+                    else item.style.display = 'list-item';
+                }
+            }
+
+            window.onhashchange = update;
+            document.getElementById('filter').onkeyup = filter;
+
+            update();
+            filter();
+        </script>
+    </body>
+</html>
+"""
+        st:call-template(:title)
+        st:call-template(:hierarchy)
+        st:call-template(:definitions)
+    }
+} where {}
+
+template :title {
+    format { "%s" ?title }
+} where {
+    ?onto a owl:Ontology ;
+          rdfs:label ?title .
+}
+
+template :hierarchy {
+    "<ul>"
+    st:call-template(:class-hierarchy)
+    "</ul>"
+} where {}
+
+template :class-hierarchy {
+    format { "<li class=\"toc\">%s</li>" st:call-template(:ref, ?c) }
+} where {
+    ?c a rdfs:Class .
+}
+
+template :definitions {
+    format { "<div id=\"%s\" class=\"def\">" st:call-template(:id, ?c) }
+    format { "<h1>%s</h1>" ?l }
+    format { "<span>%s</span>" str(?c) }
+    format { "<p>%s</p>" st:call-template(:def, ?c) }
+    "<p>In the domain of:</p>"
+    "<table>"
+    "<tr>"
+    "<th>Property</th>"
+    "<th>Value Type</th>"
+    "<th>Definition</th>"
+    "</tr>"
+    format { "%s" st:call-template(:domain, ?c) }
+    "</table>"
+    "<p>In the range of:</p>"
+    "<table>"
+    "<tr>"
+    "<th>Property</th>"
+    "<th>For Type</th>"
+    "<th>Definition</th>"
+    "</tr>"
+    format { "%s" st:call-template(:range, ?c) }
+    "</table>"
+    "<p>Sub-classes:</p>"
+    "<ul>"
+    format { "%s" st:call-template(:sub-class, ?c) }
+    "</ul>"
+    "</div>"
+} where {
+    ?c a rdfs:Class ;
+       rdfs:label ?l .
+}
+
+template :domain(?class) {
+    "<tr>"
+    format { "<td>%s</td>" ?l }
+    format { "<td>%s</td>" st:call-template(:ref, ?val) }
+    format { "<td>%s</td>" st:call-template(:def, ?p) }
+    "</tr>"
+} where {
+    ?p schema:domainIncludes ?class ;
+       schema:rangeIncludes ?val ;
+       rdfs:label ?l .
+}
+
+template :range(?class) {
+    "<tr>"
+    format { "<td>%s</td>" ?l }
+    format { "<td>%s</td>" st:call-template(:ref, ?val) }
+    format { "<td>%s</td>" st:call-template(:def, ?p) }
+    "</tr>"
+} where {
+    ?p schema:domainIncludes ?val ;
+       schema:rangeIncludes ?class ;
+       rdfs:label ?l .
+}
+
+template :sub-class(?class) {
+    "<li>"
+    format { "%s" st:call-template(:ref, ?subclass) }
+    "</li>"
+} where {
+    ?subclass rdfs:subClassOf ?class .
+}
+
+template :ref(?entity) {
+    format { "<a href=\"%s\">%s</a>" concat("#", st:call-template(:id, ?entity)) ?l }
+} where {
+    ?entity rdfs:label ?l .
+}
+
+template :id(?class) {
+    format { "%s" strafter(str(?class), "#") }
+} where {}
+
+template :def(?entity) {
+    format { "%s" ?def }
+} where {
+    optional { ?entity rdfs:comment ?comment }
+    bind (if(bound(?comment), ?comment, "<i>No definition</i>") as ?def)
+}
