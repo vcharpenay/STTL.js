@@ -26,17 +26,17 @@ template :main {
                 left: 0;
                 top: 0;
                 bottom: 0;
-                width: 280px;
+                width: 40%;
                 padding: 10px;
                 overflow: scroll;
             }
 
             #main-panel {
                 position: fixed;
-                left: 300px;
+                left: calc(40% + 20px);
                 top: 0;
                 bottom: 0;
-                width: 780px;
+                right: 0;
                 padding: 10px;
                 overflow: scroll;
             }
@@ -104,14 +104,40 @@ template :title {
 
 template :hierarchy {
     "<ul>"
-    st:call-template(:class-hierarchy)
+    st:call-template(:root-item)
     "</ul>"
 } where {}
 
-template :class-hierarchy {
-    format { "<li class=\"toc\">%s</li>" st:call-template(:ref, ?c) }
+template :root-item {
+    st:call-template(:class-item, ?c)
 } where {
-    ?c a rdfs:Class .
+    ?c a rdfs:Class
+    filter not exists { ?c rdfs:subClassOf ?sc }
+}
+
+template :class-item(?class) {
+    format {
+        "<li class=\"toc\">%s%s</li>"
+        st:call-template(:ref, ?class)
+        st:call-template(:subclasses, ?class)
+    }
+} where {
+    ?class a rdfs:Class .
+}
+
+template :subclasses(?class) {
+    "<ul>"
+    st:call-template(:subclass-list, ?class)
+    "</ul>"
+} where {
+    ?class a rdfs:Class
+    filter exists { ?sc rdfs:subClassOf ?class }
+}
+
+template :subclass-list(?class) {
+    st:call-template(:class-item, ?sc)
+} where {
+    ?sc rdfs:subClassOf ?class .
 }
 
 template :definitions {
@@ -137,10 +163,6 @@ template :definitions {
     "</tr>"
     format { "%s" st:call-template(:range, ?c) }
     "</table>"
-    "<p>Sub-classes:</p>"
-    "<ul>"
-    format { "%s" st:call-template(:sub-class, ?c) }
-    "</ul>"
     "</div>"
 } where {
     ?c a rdfs:Class ;
@@ -149,34 +171,25 @@ template :definitions {
 
 template :domain(?class) {
     "<tr>"
-    format { "<td>%s</td>" ?l }
+    format { "<td>%s</td>" st:call-template(:ref, ?p) }
     format { "<td>%s</td>" st:call-template(:ref, ?val) }
     format { "<td>%s</td>" st:call-template(:def, ?p) }
     "</tr>"
 } where {
-    ?p schema:domainIncludes ?class ;
-       schema:rangeIncludes ?val ;
-       rdfs:label ?l .
+    ?p a rdf:Property ;
+       schema:domainIncludes ?class ;
+       schema:rangeIncludes ?val .
 }
 
 template :range(?class) {
     "<tr>"
-    format { "<td>%s</td>" ?l }
+    format { "<td>%s</td>" st:call-template(:ref, ?p) }
     format { "<td>%s</td>" st:call-template(:ref, ?val) }
     format { "<td>%s</td>" st:call-template(:def, ?p) }
     "</tr>"
 } where {
     ?p schema:domainIncludes ?val ;
-       schema:rangeIncludes ?class ;
-       rdfs:label ?l .
-}
-
-template :sub-class(?class) {
-    "<li>"
-    format { "%s" st:call-template(:ref, ?subclass) }
-    "</li>"
-} where {
-    ?subclass rdfs:subClassOf ?class .
+       schema:rangeIncludes ?class .
 }
 
 template :ref(?entity) {
