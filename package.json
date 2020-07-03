@@ -20,16 +20,17 @@
   "scripts": {
     "build": "jison src/sttl.jison -p slr -o src/parser.js",
     "build-browser": "browserify src/sttl.js -s sttl -o bin/sttl-browser.js",
-    "test": "mocha"
+    "test": "mocha",
+    "render": "node src/cli.js"
   },
   "devDependencies": {
     "jison": "0.4.18",
-    "urdf": "vcharpenay/uRDF.js",
     "mocha": "3.0.x",
     "browserify": "16.x.x"
   },
   "dependencies": {
     "sparqljs": "2.0.x",
-    "node-fetch": "2.1.2"
+    "node-fetch": "2.1.2",
+    "urdf": "vcharpenay/uRDF.js"
   }
 }

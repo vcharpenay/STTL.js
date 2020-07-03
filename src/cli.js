@@ -16,7 +16,10 @@ Options:\n\
 \t-h\n\
 \t\tPrint this help message and exit.\n';
 
-let args = process.argv.splice(2);
+let args = process.argv;
+
+if (args[0].endsWith('/node') && args[1].endsWith('.js')) args = args.splice(2);
+else if (args[0].endsWith('/npm') && args[1] == 'run' && args[2] == 'render') args = args.splice(3);
 
 if (args.indexOf('-h') > -1) {
     console.log(msg);
