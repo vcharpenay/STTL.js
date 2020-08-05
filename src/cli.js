@@ -1,3 +1,6 @@
+/*
+ * Disclaimer: this script is all but well coded and tested...
+ */
 const fs = require('fs');
 const urdf = require('urdf');
 const sttl = require('../src/sttl.js');
@@ -66,13 +69,22 @@ Promise.resolve()
 .then(() => {
     sttl.connect(q => {
         return urdf.query(q)
-        .then(b => ({ results: { bindings: b }}))
+        .then(b => ({ results: { bindings: b }}));
     });
 })
 
 .then(() => {
-    let tpl = (spec.c || ['https://github.com/vcharpenay/sttl.js/#main'])[0];
-    return sttl.callTemplate(tpl);
+    let tpl = 'https://github.com/vcharpenay/sttl.js/#main';
+    let terms = [];
+    if (spec.c) {
+        tpl = spec.c[0];
+        spec.c.shift();
+        terms = spec.c.map(arg => ({
+            value: arg,
+            type: 'literal' // TODO recognize IRIs
+        }));
+    }
+    return sttl.callTemplate(tpl, ...terms);
 })
 
 .then(txt => {

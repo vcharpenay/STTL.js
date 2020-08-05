@@ -228,6 +228,7 @@ function evaluateFormat(exp, binding) {
 				}
 			});
 		case 'uri':
+			// TODO unless file IRI?
 			let m = 'Dereferencing IRI in FORMAT pattern is not supported';
 			return Promise.reject(new Error(m));
 		default:
