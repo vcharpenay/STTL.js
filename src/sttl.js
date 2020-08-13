@@ -1,3 +1,4 @@
+const fs = require('fs');
 const sparqljs = require('sparqljs');
 const fetch = require('node-fetch');
 
@@ -228,7 +229,21 @@ function evaluateFormat(exp, binding) {
 				}
 			});
 		case 'uri':
-			// TODO unless file IRI?
+			let pattern = term(exp.pattern);
+			if (pattern.value.startsWith('file://')) {
+				if (fs) {
+					let f = pattern.value.replace('file://', '');
+					// TODO open stream instead
+					let lit = fs.readFileSync(f, 'utf-8');
+
+					exp = {
+						pattern: '"' + lit + '"',
+						args: exp.args
+					};
+
+					return evaluateFormat(exp, binding);
+				}
+			}
 			let m = 'Dereferencing IRI in FORMAT pattern is not supported';
 			return Promise.reject(new Error(m));
 		default:

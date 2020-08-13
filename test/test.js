@@ -137,7 +137,7 @@ describe('Statements', () => {
 	it('6.6 Format', () => {
 		setup('statement6');
 		return sttl.applyTemplates().then(str => {
-			assert.strictEqual(str, '<h1>Alice</h1><p>Personal website</p>');
+			assert.strictEqual(str, '<h1>Alice</h1><p>Personal website</p><h1>Alice</h1><p>Personal website</p>');
 		});
 	});
 });

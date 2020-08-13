@@ -481,7 +481,7 @@ Box
     : 'BOX'  '{' TExpression* '}' -> {} /* TODO */
     ;
 Format
-    : 'FORMAT' '{' TPrimaryExpression TExpression+ '}' -> { type: 'format', pattern: $3, args: $4.map(unprocessed) }
+    : 'FORMAT' '{' ( Literal | iri ) TExpression+ '}' -> { type: 'format', pattern: $3, args: $4.map(unprocessed) }
     ;
 Separator
     : ';' 'SEPARATOR' '=' String -> { separator: $4 }
