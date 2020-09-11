@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "sparqljs": "2.0.x",
-    "node-fetch": "2.1.2",
+    "node-fetch": "2.6.1",
     "urdf": "vcharpenay/uRDF.js"
   }
 }
